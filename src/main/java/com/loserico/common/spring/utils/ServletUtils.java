@@ -10,6 +10,7 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import java.io.BufferedReader;
 import java.io.IOException;
 
 /**
@@ -139,6 +140,7 @@ public final class ServletUtils {
 	
 	/**
 	 * 添加Session attribute, 同时设置session过期时间
+	 *
 	 * @param attributeName
 	 * @param value
 	 * @param expireInSeconds
@@ -237,6 +239,60 @@ public final class ServletUtils {
 			log.error("", e);
 			throw new RuntimeException("重定向失败", e);
 		}
+	}
+	
+	/**
+	 * 读取HttpServletRequest Body
+	 */
+	public String readRequestBody() {
+		BufferedReader br = null;
+		StringBuilder sb = new StringBuilder();
+		
+		try {
+			br = request().getReader();
+			String str = null;
+			while ((str = br.readLine()) != null) {
+				sb.append(str);
+			}
+			br.close();
+		} catch (IOException e) {
+			log.error("获取body参数失败", e);
+		} finally {
+			if (null != br) {
+				try {
+					br.close();
+				} catch (IOException e) {
+					log.error("获取body参数失败", e);
+				}
+			}
+		}
+		
+		return sb.toString().replaceAll("\r|\n|\t", "");
+	}
+	
+	public static String getIpAddress(HttpServletRequest request) {
+		String ip = request.getHeader("x-forwarded-for");
+		if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getHeader("Proxy-Client-IP");
+		}
+		if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getHeader("WL-Proxy-Client-IP");
+		}
+		if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getHeader("HTTP_CLIENT_IP");
+		}
+		if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getHeader("HTTP_X_FORWARDED_FOR");
+		}
+		if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getRemoteAddr();
+		}
+		// 如果是多级代理，那么取第一个ip为客户端ip
+		if (ip != null && ip.indexOf(",") != -1) {
+			ip = ip.substring(0, ip.indexOf(",")).trim();
+		}
+		
+		return ip;
 	}
 	
 	public static class CookieBuilder {
